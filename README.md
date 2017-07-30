@@ -1,13 +1,13 @@
 # Dominant Set Clustering and Pooling for Multi-View 3D Object Recognition
 
 This repository contains the Matlab implementation of the paper [*"Dominant Set Clustering and Pooling for
-Multi-View 3D Object Recognition."*](http://www.cim.mcgill.ca/~chuwang/files/bmvc2017/bmvc_final_clean.pdf) The paper is accpeted to BMVC 2017.
+Multi-View 3D Object Recognition."*](http://www.cim.mcgill.ca/~chuwang/files/bmvc2017/bmvc_final_clean.pdf) The paper is accepted to BMVC 2017.
 
 ![DSCNN pipeline](http://www.cim.mcgill.ca/~chuwang/files/bmvc2017/System_cluster_pooling_tight.svg)
 
 **Code Credit Clarification:**
 
-The folder GraphPool-master contains implementation of Dominant Set clustering and pooling layer and its dependencies. And it is implemented by Chu Wang http://www.cim.mcgill.ca/~chuwang/ . The CNN code framework is originally adopted from MVCNN https://github.com/suhangpro/mvcnn, but it is signaficantly modified to support end-to-end dominant set clustering during CNN training. The core forward/backward propagation rule for DS layer is defined in cnn_shape_init.m located in folder cnn_code.
+The folder GraphPool-master contains implementation of Dominant Set clustering and pooling layer and its dependencies. And it is implemented by Chu Wang http://www.cim.mcgill.ca/~chuwang/ . The CNN code framework is originally adopted from MVCNN https://github.com/suhangpro/mvcnn, but it is significantly modified to support end-to-end dominant set clustering during CNN training. The core forward/backward propagation rule for DS layer is defined in cnn_shape_init.m located in folder cnn_code.
 
 **Setup:**
 
@@ -15,7 +15,7 @@ The code has been tested in
   1) Ubuntu 14.04 with cuda7.5/8.0. 
   2) MacOS 10.10 with cuda 7.5. 
 
-The results in the paper is acquired uisng 2) setup. 
+The results in the paper is acquired using 2) setup. 
 
 To proceed to the following steps, you need Matlab and Cuda ready in your system. And for the dependencies, please consider using the provided ones in this repository. For the newest versions of vlfeat and Matconvnet, you may have to configure them yourself to make it work with this implementation.
 
