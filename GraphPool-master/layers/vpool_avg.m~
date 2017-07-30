@@ -1,0 +1,13 @@
+function [ output_args ] = vpool_avg( input_args )
+%VPOOL_AVG Summary of this function goes here
+%   Detailed explanation goes here
+%   View pooling layer using average pooling.
+%   Input size: ReluFeat (nViews * nShape, reluDim)
+%   
+
+    stride = 2;
+    tmp = reshape(feats_train, [stride, size(feats_train,1)/stride , size(feats_train,2)]);
+    tmp = max(tmp,[],1);
+    tmp = squeeze(tmp);
+end
+

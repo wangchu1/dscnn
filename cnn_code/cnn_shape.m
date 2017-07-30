@@ -1,0 +1,256 @@
+function net = cnn_shape(dataName, varargin)
+%CNN_SHAPE Train an MVCNN on a provided dataset 
+%
+%   dataName:: 
+%     must be name of a folder under data/
+%   `baseModel`:: 'imagenet-matconvnet-vgg-m'
+%     learning starting point
+%   `fromScratch`:: false
+%     if false, only the last layer is initialized randomly
+%     if true, all the weight layers are initialized randomly
+%   `numFetchThreads`::
+%     #threads for vl_imreadjpeg
+%   `aug`:: 'none'
+%     specifies the operations (fliping, perturbation, etc.) used 
+%     to get sub-regions
+%   `viewpoolPos` :: 'relu5'
+%     location of the viewpool layer, only used when multiview is true
+%   `includeVal`:: false
+%     if true, validation set is also used for training 
+%   `useUprightAssumption`:: true
+%     if true, 12 views will be used to render meshes, 
+%     otherwise 80 views based on a dodecahedron
+% 
+%   `train` 
+%     training parameters: 
+%       `learningRate`:: [0.001*ones(1, 10) 0.0001*ones(1, 10) 0.00001*ones(1,10)]
+%         learning rate
+%       `batchSize`: 128
+%         set to a smaller number on limited memory
+%       `momentum`:: 0.9
+%         learning momentum
+%       `gpus` :: []
+%         a list of available gpus
+% 
+% Hang Su
+
+
+% modified functionalities to support ds clustering and pooling.
+% Chu Wang.
+
+opts.networkType = 'simplenn'; % only simplenn is supported currently 
+opts.baseModel = 'imagenet-matconvnet-vgg-m';
+opts.fromScratch = false; 
+opts.dataRoot = 'data' ;
+opts.imageExt = '.jpg';
+opts.numFetchThreads = 0 ;
+opts.multiview = true; 
+opts.viewpoolPos = 'relu5';
+opts.useUprightAssumption = true;
+opts.aug = 'stretch';
+opts.pad = 0; 
+opts.border = 0; 
+opts.numEpochs = [5 10 20]; 
+opts.includeVal = false;
+% for permute back layer, recover to 6 by 6 by 512 by Batch(pool loc = conv5)
+% here 6 is poolsquare
+% for 1 by 1 by 4096 case( pool loc = relu6)
+opts.poolsquare = 1;
+opts.cluster = {};
+opts.clusterpoolType = {};
+opts.cluster_pool = false;
+[opts, varargin] = vl_argparse(opts, varargin) ;
+
+if strcmpi(opts.baseModel(end-3:end),'.mat'), 
+  [~,modelNameStr] = fileparts(opts.baseModel); 
+  opts.baseModel = load(opts.baseModel);
+else
+  modelNameStr = opts.baseModel; 
+end
+
+if opts.multiview, 
+  opts.expDir = sprintf('%s-ft-%s-%s-%s', ...
+    modelNameStr, ...
+    dataName, ...
+    opts.viewpoolPos, ...
+    opts.networkType); 
+else
+  opts.expDir = sprintf('%s-ft-%s-%s', ...
+    modelNameStr, ...
+    dataName, ...
+    opts.networkType); 
+end
+opts.expDir = fullfile(opts.dataRoot, opts.expDir);
+[opts, varargin] = vl_argparse(opts,varargin) ;
+
+opts.train.learningRate = [0.005*ones(1, 5) 0.001*ones(1, 5) 0.0001*ones(1,10) 0.00001*ones(1,10)];
+opts.train.momentum = 0.9; 
+opts.train.batchSize = 256; 
+opts.train.maxIterPerEpoch = [Inf, Inf]; 
+opts.train.balancingFunction = {[], []}; 
+opts.train.gpus = []; 
+opts.train = vl_argparse(opts.train, varargin) ;
+
+if ~exist(opts.expDir, 'dir'), vl_xmkdir(opts.expDir) ; end
+
+assert(strcmp(opts.networkType,'simplenn'), 'Only simplenn is supported currently'); 
+
+% -------------------------------------------------------------------------
+%                                                             Prepare data
+% -------------------------------------------------------------------------
+imdb = get_imdb(dataName); 
+if ~opts.multiview, 
+  nViews = 1;
+else
+  nShapes = length(unique(imdb.images.sid));
+  nViews = length(imdb.images.id)/nShapes;
+end
+imdb.meta.nViews = nViews; 
+
+opts.train.train = find(imdb.images.set==1);
+opts.train.val = find(imdb.images.set==2); 
+if opts.includeVal, 
+  opts.train.train = [opts.train.train opts.train.val];
+  opts.train.val = [];
+end
+opts.train.train = opts.train.train(1:nViews:end);
+opts.train.val = opts.train.val(1:nViews:end); 
+
+% -------------------------------------------------------------------------
+%                                                            Prepare model
+% -------------------------------------------------------------------------
+net = cnn_shape_init(imdb.meta.classes, ...
+  'base', opts.baseModel, ...
+  'restart', opts.fromScratch, ...
+  'nViews', nViews, ...
+  'poolsquare', opts.poolsquare, ...
+  'viewpoolPos', opts.viewpoolPos, ...
+  'cluster', opts.cluster, ...
+  'clusterpoolType',opts.clusterpoolType, ...
+  'cluster_pool' , opts.cluster_pool, ...
+  'networkType', opts.networkType);  
+
+% -------------------------------------------------------------------------
+%                                                                    Learn 
+% -------------------------------------------------------------------------
+switch opts.networkType
+  case 'simplenn', trainFn = @cnn_shape_train ;
+  case 'dagnn', trainFn = @cnn_train_dag ;
+end
+
+trainable_layers = find(cellfun(@(l) isfield(l,'weights'),net.layers)); 
+
+fc_layers = find(cellfun(@(s) numel(s.name)>=2 && strcmp(s.name(1:2),'fc'),net.layers));
+fc_layers = intersect(fc_layers, trainable_layers); 
+
+% fix for the weird learning rate cancelling happend for 2nd phase cnn
+% training or end-to-end mvcnn/ds cnn training.
+
+if ~opts.multiview
+    lr = cellfun(@(l) l.learningRate, net.layers(trainable_layers),'UniformOutput',false); 
+else
+    lr = cellfun(@(l) [1,2], net.layers(trainable_layers),'UniformOutput',false); 
+end
+
+layers_for_update = {trainable_layers(end), fc_layers, trainable_layers}; 
+
+for s=1:numel(opts.numEpochs), 
+  if opts.numEpochs(s)<1, continue; end
+  for i=1:numel(trainable_layers), 
+    l = trainable_layers(i);
+    if ismember(l,layers_for_update{s}), 
+      net.layers{l}.learningRate = lr{i};
+    else
+      net.layers{l}.learningRate = lr{i}*0;
+    end
+  end
+  net = trainFn(net, imdb, getBatchFn(opts, net.meta), ...
+    'expDir', opts.expDir, ...
+    net.meta.trainOpts, ...
+    opts.train, ...
+    'numEpochs', sum(opts.numEpochs(1:s))) ;
+end
+
+% -------------------------------------------------------------------------
+%                                                                   Deploy
+% -------------------------------------------------------------------------
+net = cnn_imagenet_deploy(net) ;
+modelPath = fullfile(opts.expDir, 'net-deployed.mat');
+
+switch opts.networkType
+  case 'simplenn'
+    save(modelPath, '-struct', 'net') ;
+  case 'dagnn'
+    net_ = net.saveobj() ;
+    save(modelPath, '-struct', 'net_') ;
+    clear net_ ;
+end
+
+% -------------------------------------------------------------------------
+function fn = getBatchFn(opts, meta)
+% -------------------------------------------------------------------------
+bopts.numThreads = opts.numFetchThreads ;
+bopts.pad = opts.pad; 
+bopts.border = opts.border ;
+bopts.transformation = opts.aug ;
+bopts.imageSize = meta.normalization.imageSize ;
+bopts.averageImage = meta.normalization.averageImage ;
+bopts.rgbVariance = meta.augmentation.rgbVariance ;
+% bopts.transformation = meta.augmentation.transformation ;
+
+switch lower(opts.networkType)
+  case 'simplenn'
+    fn = @(x,y) getSimpleNNBatch(bopts,x,y) ;
+  case 'dagnn'
+    % error('dagnn version not yet implemented');
+    % added from Su's mat resnet github
+    % bopts = struct('numGpus', numel(opts.gpus)) ;
+    fn = @(x,y) getDagNNBatch(bopts,x,y) ;
+end
+
+% -------------------------------------------------------------------------
+function [im,labels] = getSimpleNNBatch(opts, imdb, batch)
+% -------------------------------------------------------------------------
+if nargout > 1, labels = imdb.images.class(batch); end
+isVal = ~isempty(batch) && imdb.images.set(batch(1)) ~= 1 ;
+nViews = imdb.meta.nViews; 
+
+batch = bsxfun(@plus,repmat(batch(:)',[nViews 1]),(0:nViews-1)');
+batch = batch(:)'; 
+
+images = strcat([imdb.imageDir filesep], imdb.images.name(batch)) ;
+
+if ~isVal, % training
+  im = cnn_shape_get_batch(images, opts, ...
+    'prefetch', nargout == 0, ...
+    'nViews', nViews); 
+else
+  im = cnn_shape_get_batch(images, opts, ...
+    'prefetch', nargout == 0, ...
+    'nViews', nViews, ...
+    'transformation', 'none'); 
+end
+
+nAugs = size(im,4)/numel(images); 
+if nargout > 1, labels = repmat(labels(:)',[1 nAugs]); end
+
+
+% added from Su's mat resnet github
+function inputs = getDagNNBatch(opts, imdb, batch)
+% -------------------------------------------------------------------------
+if imdb.images.set(batch(1))==1,  % training
+  sz0 = size(imdb.images.augData);
+  sz = size(imdb.images.data);
+  loc = [randi(sz0(1)-sz(1)+1) randi(sz0(2)-sz(2)+1)];
+  images = imdb.images.augData(loc(1):loc(1)+sz(1)-1, ...
+    loc(2):loc(2)+sz(2)-1, :, batch); 
+else                              % validating / testing
+  images = imdb.images.data(:,:,:,batch); 
+end
+labels = imdb.images.labels(1,batch) ;
+if rand > 0.5, images=fliplr(images) ; end
+if opts.numGpus > 0
+  images = gpuArray(images) ;
+end
+inputs = {'image', images, 'label', labels} ;
+
