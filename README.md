@@ -61,5 +61,5 @@ In matlab,
 ```
 **Reproduce the results**
 
-We found that different system configuration may lead to different liblinear performance. So the accuracy you acquired at your system maybe not be exactly the same as presented in our paper. But you should observe a general trend that is mvcnn-fast-approx < mvcnn-end-to-end < dscnn-fast-approx < dscnn-end-to-end.
+We found that different system configuration may lead to different liblinear performance. So the accuracy you acquired at your system maybe not be exactly the same as presented in our paper. But you should observe a general trend that is mvcnn-fast-approx < mvcnn-end-to-end \approx dscnn-fast-approx < dscnn-end-to-end.
 
