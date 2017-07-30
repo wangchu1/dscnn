@@ -7,7 +7,7 @@ Multi-View 3D Object Recognition."*](http://www.cim.mcgill.ca/~chuwang/files/bmv
 
 **Code Credit Clarification:**
 
-The folder GraphPool-master contains implementation of Dominant Set clustering and pooling layer and its dependencies. And it is implemented by Chu Wang http://www.cim.mcgill.ca/~chuwang/ . The CNN code framework is originally adopted from MVCNN https://github.com/suhangpro/mvcnn, but it has been changed a lot to adapt to our work. The core forward/backward propagation rule for DS layer is defined in cnn_shape_init.m located in folder cnn_code.
+The folder GraphPool-master contains implementation of Dominant Set clustering and pooling layer and its dependencies. And it is implemented by Chu Wang http://www.cim.mcgill.ca/~chuwang/ . The CNN code framework is originally adopted from MVCNN https://github.com/suhangpro/mvcnn, but it is signaficantly modified to support end-to-end dominant set clustering during CNN training. The core forward/backward propagation rule for DS layer is defined in cnn_shape_init.m located in folder cnn_code.
 
 **Setup:**
 
