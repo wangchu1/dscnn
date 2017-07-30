@@ -42,7 +42,7 @@ In matlab, do
 
 **Run experiments**
 
-The experiment scripts are included in folder exp_scripts. See comments in the scripts for detail. Before you proceed, please download Modelnet40 dataset from http://modelnet.cs.princeton.edu/ and render it using tools provided in utils (credit to MVCNN authors). Here we provide rendered rgb images of ModelNet40 dataset in a [tarball file](http://www.cim.mcgill.ca/dscnn-data/ModelNet40_rendered_rgb.tar) for your convenience. Rendered surface normal mappings [tarball file](http://www.cim.mcgill.ca/dscnn-data/Modelnet40_Surf.tar).
+The experiment scripts are included in folder exp_scripts. See comments in the scripts for detail. Before you proceed, please download Modelnet40 dataset from http://modelnet.cs.princeton.edu/ and render it using tools provided in utils (credit to MVCNN authors). Here we provide rendered rgb images of ModelNet40 dataset in a [tarball file](http://www.cim.mcgill.ca/dscnn-data/ModelNet40_rendered_rgb.tar), rendered depth maps in a [tarball file](http://www.cim.mcgill.ca/dscnn-data/Modelnet40_Depth.tar), rendered surface normal maps in a [tarball file](http://www.cim.mcgill.ca/dscnn-data/Modelnet40_Surf.tar) for your convenience.
 
 After you download the tarball, 
 
