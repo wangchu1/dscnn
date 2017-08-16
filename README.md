@@ -1,6 +1,6 @@
 # Dominant Set Clustering and Pooling for Multi-View 3D Object Recognition
 This repository contains the Matlab implementation of the paper [*"Dominant Set Clustering and Pooling for
-Multi-View 3D Object Recognition."*](http://www.cim.mcgill.ca/~chuwang/files/bmvc2017/bmvc_final_clean.pdf) The paper is accepted to BMVC 2017.
+Multi-View 3D Object Recognition."*](http://www.cim.mcgill.ca/~chuwang/files/bmvc2017/0253.pdf) The paper is accepted to BMVC 2017.
 
 ![DSCNN pipeline](http://www.cim.mcgill.ca/~chuwang/files/bmvc2017/System_cluster_pooling_tight.svg)
 
